@@ -28,7 +28,7 @@
 
 ## 素材
 
-1. `wechat-cover.png`：沿用 Clip 的大图标＋一句话构图，Unico 陶土橙与陶瓷质感。AI 辅助生成的品牌封面，不是 App 截图。
+1. `wechat-cover.png`：以 Unico Logo 为视觉基准，暖白背景、陶土橙叠卡、柔和立体质感，搭配深棕标题与一句话主张。AI 辅助生成的品牌封面，不是 App 截图。
 2. `app-icon.png`：来自应用打包脚本的真实 Logo。
 3. `screenshots/results-zh.jpeg`：中文真实界面，建议作为文章第一张功能图。
 4. `screenshots/results-en.jpeg`：英文真实界面，可用于 GitHub 和 X。
