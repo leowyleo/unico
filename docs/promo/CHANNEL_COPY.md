@@ -33,6 +33,8 @@
 3. `screenshots/results-zh.png`：用户提供的亮色中文真实界面，展示重复组、预览、保留与清理流程，建议作为文章第一张功能图。
 4. `screenshots/results-en.jpeg`：英文真实界面，可用于 GitHub 和 X。
 
+少数派封面使用 `wechat-cover-sspai.png`：4:3 构图，适配少数派封面裁切；保留 Unico Logo、暖白背景与陶土橙立体叠卡风格。公众号继续使用宽幅 `wechat-cover.png`。
+
 截图为用户提供的亮色界面示例；发布前确认示例文件名与路径可以公开。封面不得代替功能实测截图。
 
 ## 公众号内容
