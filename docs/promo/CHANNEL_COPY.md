@@ -10,7 +10,7 @@
 - 一句话：免费开源的 macOS 重复文件查找工具，预览、留一份，再将确认的多余副本移到废纸篓。
 - 项目：https://github.com/jearthliu/unico
 - 下载：https://github.com/jearthliu/unico/releases/tag/v1.1.3
-- 直接下载：https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.zip
+- 直接下载：https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.dmg
 - 反馈：https://github.com/jearthliu/unico/issues/new
 - 协议：MIT。当前完全重复查找免费；不要承诺未来所有高级功能永久免费。
 
@@ -50,7 +50,7 @@
 3. 配中文实测截图，说明缩略图、路径与“保留”标记。它比对内容，但不会替你判断某个路径是否仍被应用依赖。
 4. 解释克制：本地运行、无账号、只做完全重复；相似图片查找尚未加入。
 5. 单独写清“手动选择优先，但确认不是安全保证”“只移到废纸篓”“未公证与兼容性边界”。
-6. 给 GitHub / Release 下载地址，邀请反馈真正卡住的步骤；不要求关注后才能下载。
+6. 给 GitHub / Release 下载地址，说明 DMG 双击后拖入“应用程序”即可安装，邀请反馈真正卡住的步骤；不要求关注后才能下载。
 
 排版延续 Clip 的石墨极简风：短段落、留白、少量强调色。正文已使用公众号排版 skill 生成本地 HTML，尚未上传或发布到微信公众号。
 

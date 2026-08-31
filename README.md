@@ -4,7 +4,7 @@
 
 ![Unico — A little less. A little lighter.](docs/promo/wechat-cover.png)
 
-**[Download Unico v1.1.3](https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.zip)** · [Install guide](#install) · [Report an issue](https://github.com/jearthliu/unico/issues/new)
+**[Download Unico v1.1.3 DMG](https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.dmg)** · [Install guide](#install) · [Report an issue](https://github.com/jearthliu/unico/issues/new)
 
 Unico is a free, open-source duplicate-file finder for macOS. Find identical files, see what they are, and decide which copy stays.
 
@@ -39,12 +39,12 @@ Moving files to Trash does not immediately free disk space. APFS clones and comp
 
 ## Install
 
-1. Download `Unico-v1.1.3-macOS-universal.zip` from the [v1.1.3 release](https://github.com/jearthliu/unico/releases/tag/v1.1.3).
-2. Unzip and move `Unico.app` to Applications.
+1. Download `Unico-v1.1.3-macOS-universal.dmg` from the [v1.1.3 release](https://github.com/jearthliu/unico/releases/tag/v1.1.3).
+2. Double-click the DMG, then drag `Unico.app` to the `Applications` shortcut. The ZIP remains available as a fallback.
 3. Open Unico. The community build is **ad-hoc signed, not Developer ID signed, and not notarized by Apple**. If macOS blocks it, review the app-specific approval in **System Settings → Privacy & Security** (on macOS 12: **System Preferences → Security & Privacy → General**). Only approve a download you trust. Do not disable Gatekeeper globally.
 4. Start with a folder whose contents you recognize. Review the scope warning before scanning and the cleanup confirmation before moving anything.
 
-The release includes `SHA256SUMS.txt` so you can check the downloaded ZIP with `shasum -a 256`.
+The release includes `SHA256SUMS.txt` so you can check the downloaded DMG or ZIP with `shasum -a 256`.
 
 ## Compatibility
 
@@ -65,7 +65,7 @@ zsh scripts/package.sh
 open dist/Unico.app
 ```
 
-`package.sh` builds arm64 and x86_64 with a macOS 12.0 deployment target, combines them into a universal executable, ad-hoc signs the bundle, and creates `dist/Unico-macOS.zip`.
+`package.sh` builds arm64 and x86_64 with a macOS 12.0 deployment target, combines them into a universal executable, ad-hoc signs the bundle, and creates versioned ZIP and DMG installers in `dist/`. The DMG includes an `Applications` shortcut for drag-to-install; the unversioned `Unico-macOS.zip` is kept for local compatibility.
 
 The tests create their own fixtures. Trash-and-recovery tests move only generated sample files, never user-selected files.
 

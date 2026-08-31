@@ -4,7 +4,7 @@
 
 ![Unico — 少一点重复，多一点从容。](docs/promo/wechat-cover.png)
 
-**[下载 Unico v1.1.3](https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.zip)** · [安装说明](#安装) · [反馈问题](https://github.com/jearthliu/unico/issues/new)
+**[下载 Unico v1.1.3 DMG](https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.dmg)** · [安装说明](#安装) · [反馈问题](https://github.com/jearthliu/unico/issues/new)
 
 Unico 是一个免费开源的 macOS 重复文件查找工具。找出完全相同的文件，看清楚，再决定留下哪一份。
 
@@ -39,8 +39,8 @@ Unico 是一个免费开源的 macOS 重复文件查找工具。找出完全相�
 
 ## 安装
 
-1. 从 [v1.1.3 Release](https://github.com/jearthliu/unico/releases/tag/v1.1.3) 下载 `Unico-v1.1.3-macOS-universal.zip`。
-2. 解压，将 `Unico.app` 移入“应用程序”。
+1. 从 [v1.1.3 Release](https://github.com/jearthliu/unico/releases/tag/v1.1.3) 下载 `Unico-v1.1.3-macOS-universal.dmg`。
+2. 双击打开 DMG，将 `Unico.app` 拖入“应用程序”快捷入口。ZIP 仍保留作为备用下载。
 3. 当前社区版使用**临时签名，没有 Developer ID 签名，也尚未通过 Apple 公证**。若首次启动被拦截，请在“系统设置 → 隐私与安全性”中查看针对该 App 的允许操作；macOS 12 对应“系统偏好设置 → 安全性与隐私 → 通用”。只允许你信任的下载，不要全局关闭 Gatekeeper。
 4. 建议先用内容熟悉的文件夹试扫。扫描范围与实际清理分别确认。
 
@@ -65,7 +65,7 @@ zsh scripts/package.sh
 open dist/Unico.app
 ```
 
-脚本分别按 macOS 12.0 目标构建 arm64 和 x86_64，合并、临时签名并生成 `dist/Unico-macOS.zip`。测试只使用自行生成的样本，废纸篓恢复测试不会处理用户文件。
+脚本分别按 macOS 12.0 目标构建 arm64 和 x86_64，合并、临时签名并在 `dist/` 生成带版本号的 ZIP 与 DMG 安装包。DMG 内含“应用程序”快捷入口，支持拖拽安装；同时保留未带版本号的 `Unico-macOS.zip` 供本地脚本兼容使用。测试只使用自行生成的样本，废纸篓恢复测试不会处理用户文件。
 
 ## 项目状态
 
