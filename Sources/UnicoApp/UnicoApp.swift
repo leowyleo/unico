@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         model.onLanguageChange = { [weak self] in self?.rebuildMenu() }
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Unico"
+        // Keep the native title bar in the same bright family as the SwiftUI surfaces.
+        window.appearance = NSAppearance(named: .aqua)
+        window.backgroundColor = NSColor(calibratedRed: 0.965, green: 0.949, blue: 0.914, alpha: 1)
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         let toolbar = NSToolbar(identifier: "Unico.titlebar")

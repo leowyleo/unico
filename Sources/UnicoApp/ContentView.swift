@@ -4,29 +4,29 @@ import Quartz
 import UnicoCore
 
 struct UnicoColors {
-    let dark: Bool
-    var canvas: Color { dark ? Color(red: 0.105, green: 0.110, blue: 0.105) : Color(red: 0.967, green: 0.959, blue: 0.940) }
-    var surface: Color { dark ? Color(red: 0.145, green: 0.150, blue: 0.145) : Color(red: 0.994, green: 0.989, blue: 0.974) }
-    var accent: Color { dark ? Color(red: 0.90, green: 0.63, blue: 0.47) : Color(red: 0.64, green: 0.28, blue: 0.18) }
-    var ink: Color { dark ? Color(red: 0.93, green: 0.92, blue: 0.88) : Color(red: 0.17, green: 0.19, blue: 0.17) }
-    var muted: Color { ink.opacity(dark ? 0.67 : 0.66) }
-    var line: Color { (dark ? Color.white : Color.black).opacity(0.09) }
+    // The bright palette follows the Unico cover: warm ivory, ceramic cream and terracotta.
+    // Keeping these values in one place makes the light theme consistent across every phase.
+    var canvas: Color { Color(red: 0.965, green: 0.949, blue: 0.914) }
+    var surface: Color { Color(red: 0.998, green: 0.992, blue: 0.974) }
+    var accent: Color { Color(red: 0.702, green: 0.322, blue: 0.196) }
+    var accentDeep: Color { Color(red: 0.490, green: 0.196, blue: 0.129) }
+    var ink: Color { Color(red: 0.286, green: 0.239, blue: 0.200) }
+    var muted: Color { Color(red: 0.455, green: 0.416, blue: 0.373) }
+    var line: Color { Color(red: 0.820, green: 0.776, blue: 0.714).opacity(0.72) }
+    var warmHighlight: Color { Color(red: 0.929, green: 0.851, blue: 0.773) }
 }
 
 struct UnicoMark: View {
     var color: Color
-    @Environment(\.colorScheme) private var scheme
     var body: some View {
         GeometryReader { g in
             let w = g.size.width
             let card = RoundedRectangle(cornerRadius: w * 0.17)
             ZStack {
                 // A quiet ceramic back plate and a thin lower edge create depth at small sizes.
-                card.fill(scheme == .dark ? Color(red: 0.31, green: 0.23, blue: 0.18) : Color(red: 0.66, green: 0.49, blue: 0.38))
+                card.fill(Color(red: 0.676, green: 0.494, blue: 0.380))
                     .offset(y: w * 0.035)
-                    .overlay(card.fill(LinearGradient(colors: scheme == .dark
-                        ? [Color(red: 0.51, green: 0.39, blue: 0.31), Color(red: 0.33, green: 0.25, blue: 0.20)]
-                        : [Color(red: 0.97, green: 0.90, blue: 0.82), Color(red: 0.78, green: 0.64, blue: 0.53)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    .overlay(card.fill(LinearGradient(colors: [Color(red: 0.975, green: 0.902, blue: 0.820), Color(red: 0.785, green: 0.642, blue: 0.525)], startPoint: .topLeading, endPoint: .bottomTrailing)))
                     .overlay(card.strokeBorder(.white.opacity(0.25), lineWidth: max(0.5, w * 0.012)))
                     .frame(width: w * 0.64, height: w * 0.74)
                     .rotationEffect(.degrees(-6))
@@ -43,7 +43,7 @@ struct UnicoMark: View {
                         .shadow(color: .black.opacity(0.22), radius: w * 0.008, y: w * 0.018)
                 }
                 .frame(width: w * 0.64, height: w * 0.74)
-                .shadow(color: .black.opacity(scheme == .dark ? 0.30 : 0.22), radius: w * 0.06, x: w * 0.025, y: w * 0.065)
+                .shadow(color: .black.opacity(0.20), radius: w * 0.06, x: w * 0.025, y: w * 0.065)
                 .offset(x: w * 0.14, y: w * 0.11)
             }.frame(width: w, height: g.size.height)
         }.accessibilityHidden(true)
@@ -59,8 +59,11 @@ struct UnicoButtonStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 12, weight: .semibold))
             .padding(.horizontal, 16).frame(minHeight: 40)
-            .foregroundStyle(primary ? (colors.dark ? Color(red: 0.16, green: 0.12, blue: 0.10) : .white) : colors.ink)
-            .background(RoundedRectangle(cornerRadius: 10).fill(primary ? colors.accent : colors.ink.opacity(configuration.isPressed ? 0.10 : 0.055)))
+            .foregroundStyle(primary ? Color(red: 0.995, green: 0.973, blue: 0.925) : colors.ink)
+            .background(RoundedRectangle(cornerRadius: 10).fill(primary ? colors.accent : colors.surface))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(primary ? colors.accent.opacity(0.28) : colors.line, lineWidth: 1))
+            .shadow(color: .black.opacity(primary ? 0.14 : 0.045), radius: primary ? 7 : 3, y: primary ? 3 : 1)
+            .overlay(RoundedRectangle(cornerRadius: 10).fill(colors.ink.opacity(configuration.isPressed ? 0.07 : 0)))
             .opacity(enabled ? 1 : 0.4)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
@@ -69,8 +72,7 @@ struct UnicoButtonStyle: ButtonStyle {
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: UnicoColors { UnicoColors(dark: colorScheme == .dark) }
+    private let colors = UnicoColors()
     private func t(_ zh: String, _ en: String) -> String { model.t(zh, en) }
     var body: some View {
         VStack(spacing: 0) {
@@ -83,6 +85,7 @@ struct ContentView: View {
         .foregroundStyle(colors.ink).tint(colors.accent)
         .frame(minWidth: 940, minHeight: 660)
         .background(colors.canvas)
+        .preferredColorScheme(.light)
         .environment(\.locale, model.language.locale)
         .alert(item: $model.prompt) { prompt in
             switch prompt {
@@ -173,7 +176,7 @@ struct ContentView: View {
         }.padding(24).frame(width: 600)
             .background(RoundedRectangle(cornerRadius: 20).fill(colors.surface))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(model.isDropTarget ? colors.accent : colors.line, lineWidth: model.isDropTarget ? 2 : 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.08 : 0.035), radius: 18, y: 6)
+            .shadow(color: .black.opacity(0.075), radius: 18, y: 6)
             .onDrop(of: [.fileURL], isTargeted: $model.isDropTarget, perform: model.receiveDrop)
     }
 
@@ -234,7 +237,8 @@ struct ContentView: View {
             if let notice = model.notice {
                 Text(notice.text(model.language)).font(.system(size: 12)).foregroundStyle(colors.ink)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.vertical, 12)
-                    .background(colors.accent.opacity(0.08))
+                    .background(colors.warmHighlight.opacity(0.38))
+                    .overlay(Rectangle().fill(colors.accent).frame(width: 3), alignment: .leading)
             }
             Rectangle().fill(colors.line).frame(height: 1)
             footer
@@ -337,7 +341,8 @@ struct ContentView: View {
                         Text(file.name).font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                         Text(keeper ? t("保留", "Keep") : (selected ? t("待清理", "To Trash") : t("不清理", "Not selected")))
                             .font(.system(size: 9, weight: .semibold)).padding(.horizontal, 6).padding(.vertical, 3)
-                            .background(Capsule().fill(colors.ink.opacity(keeper ? 0.10 : 0.045)))
+                            .foregroundStyle(keeper ? colors.accentDeep : colors.muted)
+                            .background(Capsule().fill(keeper ? colors.warmHighlight : colors.ink.opacity(0.045)))
                     }
                     Text(model.location(file.url.deletingLastPathComponent()) + "  ·  " + model.shortPath(file.url.deletingLastPathComponent()))
                         .font(.system(size: 11)).foregroundStyle(colors.muted).lineLimit(1).truncationMode(.middle)
@@ -354,7 +359,7 @@ struct ContentView: View {
                     .font(.system(size: 10)).foregroundStyle(colors.muted).padding(.horizontal, 10)
             }
         }.padding(.horizontal, 10).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 12).fill(previewing ? colors.accent.opacity(0.055) : colors.canvas.opacity(0.55)))
+            .background(RoundedRectangle(cornerRadius: 12).fill(previewing ? colors.warmHighlight.opacity(0.42) : colors.canvas.opacity(0.55)))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(previewing ? colors.accent.opacity(0.55) : Color.clear, lineWidth: 1))
     }
 
