@@ -17,6 +17,8 @@ Unico finds identical files on your Mac, lets you preview and choose what stays,
 
 Download `Unico-v1.1.3-macOS-universal.dmg`, double-click it, and drag `Unico.app` to the Applications shortcut. A ZIP fallback remains available. The build is **ad-hoc signed, not Developer ID signed, and not notarized by Apple**. Review any macOS app-specific first-launch warning; do not disable Gatekeeper globally. See the repository README for installation steps.
 
+`SHA256SUMS-dmg.txt` contains the checksum for the DMG; the existing `SHA256SUMS.txt` verifies the ZIP fallback.
+
 Verified on Apple Silicon / macOS 26.5.1 with 24 passing tests. macOS 12/13 and Intel hardware remain untested in person. This is an early community preview; keep backups.
 
 ## Before cleanup

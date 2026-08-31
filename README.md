@@ -44,7 +44,7 @@ Moving files to Trash does not immediately free disk space. APFS clones and comp
 3. Open Unico. The community build is **ad-hoc signed, not Developer ID signed, and not notarized by Apple**. If macOS blocks it, review the app-specific approval in **System Settings → Privacy & Security** (on macOS 12: **System Preferences → Security & Privacy → General**). Only approve a download you trust. Do not disable Gatekeeper globally.
 4. Start with a folder whose contents you recognize. Review the scope warning before scanning and the cleanup confirmation before moving anything.
 
-The release includes `SHA256SUMS.txt` so you can check the downloaded DMG or ZIP with `shasum -a 256`.
+The release includes `SHA256SUMS-dmg.txt` for the DMG. The existing `SHA256SUMS.txt` continues to verify the ZIP fallback; use `shasum -a 256` to check either download.
 
 ## Compatibility
 

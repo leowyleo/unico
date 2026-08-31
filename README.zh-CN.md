@@ -44,7 +44,7 @@ Unico 是一个免费开源的 macOS 重复文件查找工具。找出完全相�
 3. 当前社区版使用**临时签名，没有 Developer ID 签名，也尚未通过 Apple 公证**。若首次启动被拦截，请在“系统设置 → 隐私与安全性”中查看针对该 App 的允许操作；macOS 12 对应“系统偏好设置 → 安全性与隐私 → 通用”。只允许你信任的下载，不要全局关闭 Gatekeeper。
 4. 建议先用内容熟悉的文件夹试扫。扫描范围与实际清理分别确认。
 
-Release 附带 `SHA256SUMS.txt`，可使用 `shasum -a 256` 核对下载包。
+Release 附带 `SHA256SUMS-dmg.txt`，可使用 `shasum -a 256` 核对 DMG；原有 `SHA256SUMS.txt` 继续用于校验 ZIP 备用包。
 
 ## 兼容性
 
