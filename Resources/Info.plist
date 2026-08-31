@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleName</key><string>Unico</string>
+<key>CFBundleDisplayName</key><string>Unico</string>
+<key>CFBundleIdentifier</key><string>cc.leowy.unico</string>
+<key>CFBundleExecutable</key><string>Unico</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>1.1.3</string>
+<key>CFBundleVersion</key><string>6</string>
+<key>CFBundleDevelopmentRegion</key><string>en</string>
+<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
+<key>CFBundleIconFile</key><string>Unico</string>
+<key>LSMinimumSystemVersion</key><string>12.0</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+<key>NSHumanReadableCopyright</key><string>Unico — A little less. A little lighter.</string>
+</dict></plist>
