@@ -2,7 +2,7 @@
 
 生产部署使用 GitHub + Cloudflare Pages，网站不依赖这台 Mac：
 
-- GitHub 仓库：`https://github.com/jearthliu/unico`
+- GitHub 仓库：`https://github.com/leowyleo/unico`
 - Cloudflare Pages 输出目录：`docs/site`
 - 公网入口：`https://unico.leowy.cc/`
 - 英文隐私政策：`https://unico.leowy.cc/privacy`

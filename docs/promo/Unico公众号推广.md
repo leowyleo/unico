@@ -44,9 +44,9 @@ Unico 不永久删除，也不清空废纸篓。移入废纸篓不会立即释�
 
 Unico 已以 MIT 协议开源，社区预览版可以免费下载。
 
-项目地址：https://github.com/jearthliu/unico
+项目地址：https://github.com/leowyleo/unico
 
-下载地址：https://github.com/jearthliu/unico/releases/tag/v1.1.3
+下载地址：https://github.com/leowyleo/unico/releases/tag/v1.1.3
 
 下载 DMG，双击打开，把 Unico.app 拖进“应用程序”。先用熟悉的小文件夹试扫，重要文件请保留备份。
 

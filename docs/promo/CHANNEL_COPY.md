@@ -8,10 +8,10 @@
 - 中文主张：少一点重复，多一点从容。
 - 英文主张：A little less. A little lighter.
 - 一句话：免费开源的 macOS 重复文件查找工具，预览、留一份，再将确认的多余副本移到废纸篓。
-- 项目：https://github.com/jearthliu/unico
-- 下载：https://github.com/jearthliu/unico/releases/tag/v1.1.3
-- 直接下载：https://github.com/jearthliu/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.dmg
-- 反馈：https://github.com/jearthliu/unico/issues/new
+- 项目：https://github.com/leowyleo/unico
+- 下载：https://github.com/leowyleo/unico/releases/tag/v1.1.3
+- 直接下载：https://github.com/leowyleo/unico/releases/download/v1.1.3/Unico-v1.1.3-macOS-universal.dmg
+- 反馈：https://github.com/leowyleo/unico/issues/new
 - 协议：MIT。当前完全重复查找免费；不要承诺未来所有高级功能永久免费。
 
 ## 事实与边界
@@ -65,7 +65,7 @@
 完全本地，无账号。只找内容完全相同的文件；内容相同也不代表每个路径都能删。
 
 社区预览版，尚未公证：
-https://github.com/jearthliu/unico
+https://github.com/leowyleo/unico
 
 ## X English draft
 
@@ -76,7 +76,7 @@ Choose folders → preview → keep a copy → confirm Trash.
 Local, no account. Identical files can still be needed at both paths.
 
 Early preview; not notarized:
-https://github.com/jearthliu/unico
+https://github.com/leowyleo/unico
 
 ## 30 秒演示顺序
 
