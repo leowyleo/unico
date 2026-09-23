@@ -2,6 +2,10 @@
 set -euo pipefail
 cd "${0:A:h:h}"
 
+if [[ -d /Applications/Xcode.app/Contents/Developer ]]; then
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
+
 minimum=$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' Resources/Info.plist)
 version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
 binaries=()
@@ -24,6 +28,7 @@ chmod +x "$app/Contents/MacOS/Unico"
 cp Resources/Info.plist "$app/Contents/Info.plist"
 swift scripts/icon.swift "$PWD/dist"
 iconutil -c icns "$PWD/dist/Unico.iconset" -o "$app/Contents/Resources/Unico.icns"
+cp Resources/PrivacyInfo.xcprivacy "$app/Contents/Resources/PrivacyInfo.xcprivacy"
 codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
 touch "$app"

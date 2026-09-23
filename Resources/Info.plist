@@ -7,12 +7,15 @@
 <key>CFBundleExecutable</key><string>Unico</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>1.1.3</string>
-<key>CFBundleVersion</key><string>6</string>
+<key>CFBundleVersion</key><string>8</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
 <key>CFBundleIconFile</key><string>Unico</string>
 <key>LSMinimumSystemVersion</key><string>12.0</string>
+<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 <key>NSHumanReadableCopyright</key><string>Unico — A little less. A little lighter.</string>
+<!-- Unico only hashes local files with CryptoKit; it does not implement encryption. -->
+<key>ITSAppUsesNonExemptEncryption</key><false/>
 </dict></plist>

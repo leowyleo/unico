@@ -4,30 +4,57 @@ import UnicoCore
 @testable import UnicoApp
 
 final class AppModelTests: XCTestCase {
-    func testLanguageDefaultsAndSavedPreference() throws {
+    func testAppStoreBuildConfiguration() {
+        XCTAssertFalse(DistributionConfiguration.isAppStoreBuild(info: [:]))
+        XCTAssertTrue(DistributionConfiguration.isAppStoreBuild(info: ["UnicoAppStoreBuild": true]))
+    }
+
+    @MainActor
+    func testScanSettingsDefaultsAndPersistence() throws {
+        let suite = "Unico-Settings-Test-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = ScanSettings(defaults: defaults)
+        XCTAssertEqual(settings.includedFileTypes, FileTypeCategory.defaultIncluded)
+        XCTAssertEqual(settings.defaultKeepRule, .newestModified)
+        XCTAssertTrue(settings.skipHiddenFiles)
+        XCTAssertEqual(settings.minimumFileSize, 1_000_000)
+        settings.setIncluded(.other, true)
+        settings.setSkipHiddenFiles(false)
+        settings.setMinimumFileSize(250_000)
+        settings.addIgnoredFolder(URL(fileURLWithPath: "/tmp/Unico-Ignored"))
+        settings.setDefaultKeepRule(.oldestModified)
+
+        let restored = ScanSettings(defaults: defaults)
+        XCTAssertTrue(restored.includedFileTypes.contains(.other))
+        XCTAssertFalse(restored.skipHiddenFiles)
+        XCTAssertEqual(restored.minimumFileSize, 250_000)
+        XCTAssertEqual(restored.ignoredPaths, ["/tmp/Unico-Ignored"])
+        XCTAssertEqual(restored.defaultKeepRule, .oldestModified)
+    }
+
+    func testLanguageFollowsSystemPreference() throws {
         let suite = "Unico-Language-Test-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(["zh-Hans-CN"], forKey: "AppleLanguages")
-        XCTAssertEqual(AppLanguage.initial(defaults: defaults), .english)
-        defaults.set("invalid", forKey: "Unico.language")
-        XCTAssertEqual(AppLanguage.initial(defaults: defaults), .english)
-        defaults.set("zh-Hans", forKey: "Unico.language")
-        XCTAssertEqual(AppLanguage.initial(defaults: defaults), .chinese)
-        defaults.set("en", forKey: "Unico.language")
-        XCTAssertEqual(AppLanguage.initial(defaults: defaults), .english)
+        XCTAssertEqual(AppLanguage.system(defaults: defaults), .chinese)
+        defaults.set(["ja-JP", "zh-Hans-CN"], forKey: "AppleLanguages")
+        XCTAssertEqual(AppLanguage.system(defaults: defaults), .english)
+        defaults.set(["ko-KR", "zh-Hans-CN"], forKey: "AppleLanguages")
+        XCTAssertEqual(AppLanguage.system(defaults: defaults), .english)
+        defaults.set(["zh-Hant-TW"], forKey: "AppleLanguages")
+        XCTAssertEqual(AppLanguage.system(defaults: defaults), .english)
+        defaults.set(["fr-FR"], forKey: "AppleLanguages")
+        XCTAssertEqual(AppLanguage.system(defaults: defaults), .english)
         XCTAssertEqual(fileSize(1, language: .english), "1 byte")
         XCTAssertEqual(fileSize(2, language: .english), "2 bytes")
         XCTAssertEqual(fileSize(2, language: .chinese), "2 字节")
     }
 
     @MainActor
-    func testLanguageSwitchPreservesScanAndSelection() throws {
-        let saved = UserDefaults.standard.object(forKey: "Unico.language")
-        defer {
-            if let saved { UserDefaults.standard.set(saved, forKey: "Unico.language") }
-            else { UserDefaults.standard.removeObject(forKey: "Unico.language") }
-        }
+    func testSystemLanguageDoesNotChangeScanAndSelection() throws {
         let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Unico-Language-Test-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -39,18 +66,49 @@ final class AppModelTests: XCTestCase {
         model.previewID = group.files.last?.id
         model.phase = .results
         model.notice = AppMessage("扫描已取消", "Scan cancelled")
-        model.language = .english
-        XCTAssertEqual(model.notice?.text(model.language), "Scan cancelled")
-        XCTAssertEqual(AppLanguage.initial(), .english)
+        XCTAssertEqual(model.notice?.text(.english), "Scan cancelled")
         XCTAssertEqual(model.groups.first?.keeperID, group.keeperID)
         XCTAssertEqual(model.groups.first?.selectedIDs, group.selectedIDs)
         XCTAssertEqual(model.previewID, group.files.last?.id)
-        model.language = .chinese
-        XCTAssertEqual(model.notice?.text(model.language), "扫描已取消")
+        XCTAssertEqual(model.notice?.text(.chinese), "扫描已取消")
         XCTAssertEqual(model.selectedCount, 1)
         let issue = ScanIssue(path: root.path, error: ScanError.changed)
         XCTAssertTrue(issue.englishReason.contains("changed"))
         XCTAssertTrue(issue.reason.contains("变化"))
+    }
+
+    @MainActor
+    func testScanUsesIgnoredFoldersFromSettings() async throws {
+        let suite = "Unico-Ignored-Scan-Test-Defaults-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Unico-Ignored-Scan-Test-\(UUID())")
+        let included = root.appendingPathComponent("included")
+        let ignored = root.appendingPathComponent("ignored")
+        try FileManager.default.createDirectory(at: included, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: ignored, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        for name in ["a.txt", "b.txt"] {
+            try Data("included contents".utf8).write(to: included.appendingPathComponent(name))
+            try Data("ignored contents".utf8).write(to: ignored.appendingPathComponent(name))
+        }
+
+        let model = AppModel(settings: ScanSettings(defaults: defaults))
+        model.settings.setMinimumFileSize(0)
+        model.settings.addIgnoredFolder(ignored)
+        model.add([root])
+        model.start(confirmed: true)
+        for _ in 0..<100 {
+            if !model.busy { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        XCTAssertFalse(model.busy)
+        let files = Set(model.groups.flatMap(\.files).map(\.url))
+        XCTAssertEqual(files, Set([included.appendingPathComponent("a.txt"), included.appendingPathComponent("b.txt")]))
+        XCTAssertFalse(files.contains(ignored.appendingPathComponent("a.txt")))
+        XCTAssertFalse(files.contains(ignored.appendingPathComponent("b.txt")))
     }
 
     @MainActor
@@ -105,6 +163,8 @@ final class AppModelTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         for name in ["Package.swift", "copy.swift"] { try Data("same".utf8).write(to: root.appendingPathComponent(name)) }
         let model = AppModel()
+        model.settings.setIncluded(.scripts, true)
+        model.settings.setMinimumFileSize(0)
         model.add([root])
         XCTAssertEqual(model.roots.map(\.path), [root.path])
         XCTAssertNil(model.notice)

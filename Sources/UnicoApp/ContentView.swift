@@ -3,76 +3,15 @@ import AppKit
 import Quartz
 import UnicoCore
 
-struct UnicoColors {
-    // The bright palette follows the Unico cover: warm ivory, ceramic cream and terracotta.
-    // Keeping these values in one place makes the light theme consistent across every phase.
-    var canvas: Color { Color(red: 0.965, green: 0.949, blue: 0.914) }
-    var surface: Color { Color(red: 0.998, green: 0.992, blue: 0.974) }
-    var accent: Color { Color(red: 0.702, green: 0.322, blue: 0.196) }
-    var accentDeep: Color { Color(red: 0.490, green: 0.196, blue: 0.129) }
-    var ink: Color { Color(red: 0.286, green: 0.239, blue: 0.200) }
-    var muted: Color { Color(red: 0.455, green: 0.416, blue: 0.373) }
-    var line: Color { Color(red: 0.820, green: 0.776, blue: 0.714).opacity(0.72) }
-    var warmHighlight: Color { Color(red: 0.929, green: 0.851, blue: 0.773) }
-}
-
-struct UnicoMark: View {
-    var color: Color
-    var body: some View {
-        GeometryReader { g in
-            let w = g.size.width
-            let card = RoundedRectangle(cornerRadius: w * 0.17)
-            ZStack {
-                // A quiet ceramic back plate and a thin lower edge create depth at small sizes.
-                card.fill(Color(red: 0.676, green: 0.494, blue: 0.380))
-                    .offset(y: w * 0.035)
-                    .overlay(card.fill(LinearGradient(colors: [Color(red: 0.975, green: 0.902, blue: 0.820), Color(red: 0.785, green: 0.642, blue: 0.525)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                    .overlay(card.strokeBorder(.white.opacity(0.25), lineWidth: max(0.5, w * 0.012)))
-                    .frame(width: w * 0.64, height: w * 0.74)
-                    .rotationEffect(.degrees(-6))
-                    .shadow(color: .black.opacity(0.18), radius: w * 0.055, x: 0, y: w * 0.055)
-                    .offset(x: -w * 0.14, y: -w * 0.11)
-                ZStack {
-                    card.fill(color).overlay(card.fill(.black.opacity(0.28)))
-                        .offset(x: w * 0.012, y: w * 0.045)
-                    card.fill(color)
-                        .overlay(card.fill(LinearGradient(colors: [.white.opacity(0.23), .clear, .black.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .overlay(card.strokeBorder(LinearGradient(colors: [.white.opacity(0.5), .white.opacity(0.08), .black.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: max(0.6, w * 0.016)))
-                    Image(systemName: "checkmark").font(.system(size: w * 0.27, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.99, green: 0.97, blue: 0.92))
-                        .shadow(color: .black.opacity(0.22), radius: w * 0.008, y: w * 0.018)
-                }
-                .frame(width: w * 0.64, height: w * 0.74)
-                .shadow(color: .black.opacity(0.20), radius: w * 0.06, x: w * 0.025, y: w * 0.065)
-                .offset(x: w * 0.14, y: w * 0.11)
-            }.frame(width: w, height: g.size.height)
-        }.accessibilityHidden(true)
-    }
-}
-
-struct UnicoButtonStyle: ButtonStyle {
-    var colors: UnicoColors
-    var primary = false
-    @Environment(\.isEnabled) private var enabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 12, weight: .semibold))
-            .padding(.horizontal, 16).frame(minHeight: 40)
-            .foregroundStyle(primary ? Color(red: 0.995, green: 0.973, blue: 0.925) : colors.ink)
-            .background(RoundedRectangle(cornerRadius: 10).fill(primary ? colors.accent : colors.surface))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(primary ? colors.accent.opacity(0.28) : colors.line, lineWidth: 1))
-            .shadow(color: .black.opacity(primary ? 0.14 : 0.045), radius: primary ? 7 : 3, y: primary ? 3 : 1)
-            .overlay(RoundedRectangle(cornerRadius: 10).fill(colors.ink.opacity(configuration.isPressed ? 0.07 : 0)))
-            .opacity(enabled ? 1 : 0.4)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
-    }
+private enum SystemPalette {
+    static let window = Color(nsColor: .windowBackgroundColor)
+    static let control = Color(nsColor: .controlBackgroundColor)
+    static let separator = Color(nsColor: .separatorColor)
+    static let selection = Color(nsColor: .selectedContentBackgroundColor)
 }
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
-    private let colors = UnicoColors()
     private func t(_ zh: String, _ en: String) -> String { model.t(zh, en) }
     var body: some View {
         VStack(spacing: 0) {
@@ -82,17 +21,17 @@ struct ContentView: View {
             case .results: resultsView
             }
         }
-        .foregroundStyle(colors.ink).tint(colors.accent)
+        .foregroundStyle(.primary).tint(.accentColor)
         .frame(minWidth: 940, minHeight: 660)
-        .background(colors.canvas)
-        .preferredColorScheme(.light)
+        .background(SystemPalette.window)
+        .overlay(SettingsTitlebarAccessory(settings: model.settings, language: model.language).frame(width: 0, height: 0).allowsHitTesting(false))
         .environment(\.locale, model.language.locale)
         .alert(item: $model.prompt) { prompt in
             switch prompt {
             case .wholeDisk:
-                return Alert(title: Text(t("扫描本机内置磁盘？", "Scan the internal disk?")), message: Text(t("文件较多时可能耗时较长，可以随时取消。只查找常见个人文件；隐藏目录、程序、配置、开发项目及图库内部内容会跳过。外接磁盘与网络位置不包含在内。无法读取的位置会列出提示。", "This may take a while. You can cancel at any time. Only common personal files are included. Hidden folders, applications, configuration, development projects and photo libraries are skipped. External and network disks are excluded. Unreadable locations will be reported.")), primaryButton: .default(Text(t("开始扫描", "Start scan"))) { model.start(wholeDisk: true) }, secondaryButton: .cancel(Text(t("取消", "Cancel"))))
+                return Alert(title: Text(t("扫描本机内置磁盘？", "Scan the internal disk?")), message: Text(t("文件较多时可能耗时较长，可以随时取消。只查找设置中选定的文件类型；系统位置、隐藏目录、应用、依赖与缓存会跳过。外接磁盘与网络位置不包含在内。", "This may take a while. You can cancel at any time. Only selected file types are included. System locations, hidden folders, apps, dependencies, and caches are skipped. External and network volumes are excluded.")), primaryButton: .default(Text(t("开始扫描", "Start scan"))) { model.start(wholeDisk: true) }, secondaryButton: .cancel(Text(t("取消", "Cancel"))))
             case .manualScan:
-                return Alert(title: Text(t("按所选范围扫描？", "Scan everything in these folders?")), message: Text(t("你主动选择的文件夹及其子目录将优先于默认排除规则，包含隐藏文件、应用内部、项目资源和未知类型。删除这些文件可能影响应用或系统运行。\n\n扫描本身不会修改文件，清理前仍需确认。链接、硬链接、未下载的云文件及无权限内容仍会跳过。\n\n", "Your selected folders and their subfolders override default exclusions, including hidden files, app internals, project resources and unknown types. Removing these files may affect apps or the system.\n\nScanning changes nothing. Cleanup requires a separate confirmation. Links, hard links, cloud-only files and inaccessible items are still skipped.\n\n") + model.roots.map { model.shortPath($0) }.joined(separator: "\n")), primaryButton: .default(Text(t("确认并扫描", "Confirm and scan"))) { model.start(confirmed: true) }, secondaryButton: .cancel(Text(t("取消", "Cancel"))))
+                return Alert(title: Text(t("按所选范围扫描？", "Scan these folders?")), message: Text(t("扫描所选文件夹及其子目录中、设置允许的文件类型。\n\n扫描只读取文件，不会修改任何内容。系统位置、应用包、链接、隐藏项、依赖与缓存会自动跳过。发现重复项后，仍需确认才能移到废纸篓。\n\n", "Scanning selected file types in these folders and their subfolders is read-only. System locations, app bundles, links, hidden items, dependencies, and caches are skipped. Duplicates still require confirmation before moving to Trash.\n\n") + model.roots.map { model.shortPath($0) }.joined(separator: "\n")), primaryButton: .default(Text(t("确认并扫描", "Confirm and scan"))) { model.start(confirmed: true) }, secondaryButton: .cancel(Text(t("取消", "Cancel"))))
             case .clean:
                 return Alert(title: Text(t("将 \(model.selectedCount) 个副本移到废纸篓？", "Move \(englishCount(model.selectedCount, "copy", "copies")) to Trash?")), message: Text(t("所选文件共 \(model.size(model.selectedBytes))，每组至少保留一份。请确认这些位置的副本不再需要；内容相同不代表所有路径都可删。清理前会重新检查内容与文件身份。所选目录中的应用、项目或系统文件即使相同，删除也可能导致功能失效。\n\n可从废纸篓恢复。清空废纸篓后才释放空间，实际释放空间可能与文件总大小不同。", "Selected size: \(model.size(model.selectedBytes)). At least one file per group will be kept. Confirm these copies are no longer needed at their locations. Identical contents do not make every path disposable. Contents and file identity are checked again before cleanup. Removing identical app, project or system files in selected folders may still break functionality.\n\nFiles can be restored from Trash. Space is freed only after emptying Trash; actual savings may differ.")), primaryButton: .default(Text(t("移到废纸篓", "Move to Trash"))) { model.clean() }, secondaryButton: .cancel(Text(t("取消", "Cancel"))))
             }
@@ -103,91 +42,130 @@ struct ContentView: View {
 
     private var startView: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 20)
-            UnicoMark(color: colors.accent).frame(width: 66, height: 72).padding(.bottom, 25)
+            Spacer(minLength: 42)
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 32, weight: .light))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 64, height: 64)
+                .background(Circle().fill(SystemPalette.control))
+                .padding(.bottom, 18)
             Text(t("少一点重复，多一点从容。", "A little less. A little lighter."))
-                .font(.system(size: 31, weight: .medium)).tracking(-0.7).padding(.bottom, 12)
-            Text(t("找出相同的文件，让每一份保留都有意义。", "Find identical files. Keep what belongs."))
-                .font(.system(size: 14)).foregroundStyle(colors.muted).padding(.bottom, 30)
+                .font(.title2.weight(.semibold))
+                .padding(.bottom, 8)
+            Text(t("选择文件夹，找出内容完全相同的文件，再决定保留哪一份。", "Choose folders, find identical files, then decide what stays."))
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 480)
+                .padding(.bottom, 28)
             scopeCard
-            HStack(spacing: 8) {
-                Image(systemName: "internaldrive").foregroundStyle(colors.muted)
-                Button(t("或扫描本机内置磁盘", "Or scan the internal disk")) { model.prompt = .wholeDisk }
-                    .buttonStyle(.plain).foregroundStyle(colors.muted).frame(minHeight: 40)
-            }.font(.system(size: 12)).padding(.top, 12)
-            if let notice = model.notice {
-                Text(notice.text(model.language)).font(.system(size: 12)).foregroundStyle(colors.muted)
-                    .multilineTextAlignment(.center).frame(maxWidth: 580).padding(.top, 8)
+            if model.supportsWholeDiskScan {
+                Button { model.prompt = .wholeDisk } label: {
+                    Label(t("扫描本机内置磁盘", "Scan the internal disk"), systemImage: "internaldrive")
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 14)
             }
-            Spacer(minLength: 20)
+            if let notice = model.notice {
+                Text(notice.text(model.language))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+                    .padding(.top, 10)
+            }
+            Spacer(minLength: 36)
             Label(t("完全本地 · 无需账号 · 仅移到废纸篓", "On your Mac · No account · Trash, never erase"), systemImage: "lock.shield")
-                .font(.system(size: 11)).foregroundStyle(colors.muted).padding(.bottom, 24)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 24)
+        }
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var scopeCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 0) {
             if model.roots.isEmpty {
-                HStack(spacing: 16) {
-                    Image(systemName: "folder.badge.plus").font(.system(size: 27, weight: .light))
-                        .foregroundStyle(colors.accent).frame(width: 44, height: 48)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(t("从一个文件夹开始", "Start with a folder")).font(.system(size: 15, weight: .semibold))
-                        Text(t("拖到这里，也可以一次选择多个", "Drop folders here, or choose a few"))
-                            .font(.system(size: 12)).foregroundStyle(colors.muted)
-                    }
-                    Spacer(minLength: 16)
+                VStack(spacing: 10) {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 29, weight: .light))
+                        .foregroundStyle(Color.accentColor)
+                    Text(t("从文件夹开始", "Start with folders"))
+                        .font(.headline)
+                    Text(t("拖入文件夹，或一次选择多个", "Drop folders here, or choose several at once"))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                     Button(t("选择文件夹", "Choose folders"), action: model.addFolders)
-                        .buttonStyle(UnicoButtonStyle(colors: colors, primary: true))
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 6)
+                        .accessibilityHint(t("可一次选择多个文件夹", "You can choose more than one folder"))
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 26)
             } else {
+                Text(t("已选择的文件夹", "Selected folders"))
+                    .font(.headline)
+                Text(t("确认范围后开始扫描", "Review the scope, then start scanning"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
                 ScrollView {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 4) {
                         ForEach(model.roots, id: \.path) { url in
                             HStack(spacing: 12) {
-                                Image(systemName: "folder").foregroundStyle(colors.accent).frame(width: 28)
+                                Image(systemName: "folder")
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: 28)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(model.location(url)).font(.system(size: 13, weight: .semibold))
-                                    Text(model.shortPath(url)).font(.system(size: 11)).foregroundStyle(colors.muted).lineLimit(1).truncationMode(.middle)
+                                    Text(model.location(url)).font(.subheadline.weight(.semibold))
+                                    Text(model.shortPath(url))
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
                                 }
                                 Spacer()
                                 Button { model.roots.removeAll { $0 == url } } label: {
                                     Image(systemName: "xmark").font(.system(size: 11)).frame(width: 40, height: 40).contentShape(Rectangle())
-                                }.buttonStyle(.plain).foregroundStyle(colors.muted)
+                                }.buttonStyle(.plain).foregroundStyle(.secondary)
                                     .accessibilityLabel(t("移除 \(model.location(url))", "Remove \(model.location(url))"))
                             }.frame(minHeight: 52)
                         }
                     }
-                }.frame(height: min(150, CGFloat(model.roots.count) * 58))
+                }
+                .padding(.top, 16)
+                .frame(height: min(150, CGFloat(model.roots.count) * 58))
                 HStack {
-                    Button(t("添加文件夹", "Add folders"), action: model.addFolders).buttonStyle(UnicoButtonStyle(colors: colors))
+                    Button(t("添加文件夹", "Add folders"), action: model.addFolders).buttonStyle(.bordered)
                     Spacer()
                     Button { model.start() } label: { Label(t("开始扫描", "Start scan"), systemImage: "arrow.right") }
-                        .buttonStyle(UnicoButtonStyle(colors: colors, primary: true))
+                        .buttonStyle(.borderedProminent)
                 }
+                .padding(.top, 16)
             }
-            Rectangle().fill(colors.line).frame(height: 1)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(t("选择文件夹，确认后按所选范围扫描", "Your folders. Your scan scope."))
-                    .font(.system(size: 11, weight: .medium))
-                Text(t("手动选择优先；全盘扫描默认排除受保护内容。", "Confirmed folders override exclusions. Whole-disk scans stay protected."))
-                    .font(.system(size: 11)).foregroundStyle(colors.muted)
-            }
-        }.padding(24).frame(width: 600)
-            .background(RoundedRectangle(cornerRadius: 20).fill(colors.surface))
-            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(model.isDropTarget ? colors.accent : colors.line, lineWidth: model.isDropTarget ? 2 : 1))
-            .shadow(color: .black.opacity(0.075), radius: 18, y: 6)
+            Divider()
+                .padding(.vertical, 18)
+            Label(t("按设置扫描所选类型；受保护位置始终跳过", "Selected types are scanned; protected locations are always skipped"), systemImage: "checkmark.shield")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(24)
+        .frame(width: 500)
+            .background(RoundedRectangle(cornerRadius: 12).fill(SystemPalette.control))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(model.isDropTarget ? Color.accentColor : SystemPalette.separator, lineWidth: model.isDropTarget ? 2 : 1))
             .onDrop(of: [.fileURL], isTargeted: $model.isDropTarget, perform: model.receiveDrop)
     }
 
     private var scanningView: some View {
         VStack(spacing: 0) {
             Spacer()
-            UnicoMark(color: colors.accent).frame(width: 52, height: 58).padding(.bottom, 28)
+            Image(systemName: "doc.on.doc").font(.system(size: 36, weight: .light)).foregroundStyle(.secondary).padding(.bottom, 28)
             Text(model.cancelling ? t("正在停止扫描…", "Stopping scan…") : t(model.progress.phase, model.progress.englishPhase))
                 .font(.system(size: 27, weight: .medium)).padding(.bottom, 12)
             Text(t("已读取 \(model.progress.scanned) 个文件 · 已发现 \(model.progress.duplicateGroups) 组重复", "\(englishCount(model.progress.scanned, "file")) read · \(englishCount(model.progress.duplicateGroups, "duplicate group"))"))
-                .font(.system(size: 13)).foregroundStyle(colors.muted).monospacedDigit().padding(.bottom, 28)
+                .font(.system(size: 13)).foregroundStyle(.secondary).monospacedDigit().padding(.bottom, 28)
             Group {
                 if model.progress.totalToCheck > 0 {
                     ProgressView(value: Double(model.progress.checked), total: Double(model.progress.totalToCheck))
@@ -195,52 +173,61 @@ struct ContentView: View {
             }.frame(width: 360)
             if model.progress.totalToCheck > 0 {
                 Text(t("内容核验 \(model.progress.checked) / \(model.progress.totalToCheck)", "Content checks \(model.progress.checked) / \(model.progress.totalToCheck)"))
-                    .font(.system(size: 11)).foregroundStyle(colors.muted).monospacedDigit().padding(.top, 10)
+                    .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit().padding(.top, 10)
             }
-            Text(model.progress.currentPath).font(.system(size: 11)).foregroundStyle(colors.muted)
+            Text(model.progress.currentPath).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle).frame(maxWidth: 560).padding(.top, 18)
             Button(model.cancelling ? t("正在取消…", "Cancelling…") : t("取消扫描", "Cancel scan"), action: model.cancel)
-                .buttonStyle(UnicoButtonStyle(colors: colors)).disabled(model.cancelling).padding(.top, 24)
+                .buttonStyle(.bordered).disabled(model.cancelling).padding(.top, 24)
             Spacer()
             Label(t("此时只读取文件，不会修改或删除。", "Read-only scanning. No files are changed or deleted."), systemImage: "lock.shield")
-                .font(.system(size: 11)).foregroundStyle(colors.muted).padding(.bottom, 24)
+                .font(.system(size: 11)).foregroundStyle(.secondary).padding(.bottom, 24)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var resultsView: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Text(t("\(model.groups.count) 组重复", "\(englishCount(model.groups.count, "duplicate group"))"))
+                Text(t("\(model.visibleGroups.count) 组重复", "\(englishCount(model.visibleGroups.count, "duplicate group"))"))
                     .font(.system(size: 15, weight: .semibold)).monospacedDigit()
                 Text(t("已读取 \(model.scanned) · 已排除 \(model.excluded)", "\(model.scanned) read · \(model.excluded) excluded"))
-                    .font(.system(size: 11)).foregroundStyle(colors.muted)
-                    .help(model.isWholeDisk ? t("全盘扫描排除隐藏目录、系统、应用、开发项目及未知类型。", "Whole-disk scans exclude hidden folders, system files, apps, projects and unknown types.") : t("已按确认的目录范围扫描；链接、硬链接及无法读取的文件仍跳过。", "Scanned the confirmed folders. Links, hard links and unreadable files are still skipped."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .help(model.isWholeDisk ? t("仅扫描设置允许的类型；系统、应用、隐藏项、依赖和缓存会跳过。", "Only selected types are scanned. System locations, apps, hidden items, dependencies, and caches are skipped.") : t("已按确认的目录和所选类型扫描；受保护内容仍会跳过。", "Scanned confirmed folders and selected types; protected content is still skipped."))
                 Spacer(minLength: 8)
+                if model.systemOrProtectedGroupCount > 0 {
+                    Toggle(t("隐藏系统及受保护文件", "Hide system and protected files"), isOn: Binding(
+                        get: { model.hidesSystemFiles },
+                        set: { model.setSystemFileVisibility($0) }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11))
+                    .help(t("默认隐藏这些结果；显示后也需要你逐项选择，才会清理。", "These results are hidden by default. Showing them never selects them for cleanup."))
+                }
                 Button(t("重新扫描", "New scan"), action: model.reset)
-                    .buttonStyle(UnicoButtonStyle(colors: colors)).disabled(model.isCleaning)
+                    .buttonStyle(.bordered).disabled(model.isCleaning)
                 if !model.issues.isEmpty {
                     Button { model.showIssues = true } label: { Label(t("\(model.issues.count) 项需注意", "\(englishCount(model.issues.count, "issue"))"), systemImage: "exclamationmark.circle") }
-                        .buttonStyle(UnicoButtonStyle(colors: colors))
+                        .buttonStyle(.bordered)
                 }
-                if !model.groups.isEmpty {
-                    Button(model.selectedCount > 0 ? t("取消全选", "Deselect all") : t("选择多余副本", "Select extra copies"), action: model.toggleAll)
-                        .buttonStyle(UnicoButtonStyle(colors: colors)).disabled(model.isCleaning)
+                if !model.visibleGroups.isEmpty {
+                    Button(model.visibleSelectedCount > 0 ? t("取消全选", "Deselect all") : t("选择多余副本", "Select extra copies"), action: model.toggleAll)
+                        .buttonStyle(.bordered).disabled(model.isCleaning)
                 }
             }.padding(.horizontal, 24).padding(.vertical, 10)
-            Rectangle().fill(colors.line).frame(height: 1)
-            if model.groups.isEmpty { emptyResults } else {
+            Rectangle().fill(SystemPalette.separator).frame(height: 1)
+            if model.visibleGroups.isEmpty { emptyResults } else {
                 HSplitView {
                     groupList.frame(minWidth: 220, idealWidth: 260, maxWidth: 300)
                     detail.frame(minWidth: 570, maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             if let notice = model.notice {
-                Text(notice.text(model.language)).font(.system(size: 12)).foregroundStyle(colors.ink)
+                Text(notice.text(model.language)).font(.system(size: 12)).foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.vertical, 12)
-                    .background(colors.warmHighlight.opacity(0.38))
-                    .overlay(Rectangle().fill(colors.accent).frame(width: 3), alignment: .leading)
+                    .background(SystemPalette.selection.opacity(0.32))
+                    .overlay(Rectangle().fill(Color.accentColor).frame(width: 3), alignment: .leading)
             }
-            Rectangle().fill(colors.line).frame(height: 1)
+            Rectangle().fill(SystemPalette.separator).frame(height: 1)
             footer
         }
     }
@@ -249,18 +236,18 @@ struct ContentView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: model.notice == nil ? "doc.text.magnifyingglass" : "checkmark.circle")
-                .font(.system(size: 40, weight: .ultraLight)).foregroundStyle(colors.accent)
-            Text(model.notice == nil ? t("没有发现完全重复的文件", "No identical files found") : (model.issues.isEmpty ? t("清理完成", "Cleanup complete") : t("本轮处理已结束", "Finished with skipped items")))
+                .font(.system(size: 40, weight: .ultraLight)).foregroundStyle(Color.accentColor)
+            Text(model.notice == nil ? (model.groups.isEmpty ? t("没有发现完全重复的文件", "No identical files found") : t("没有显示中的重复文件", "No visible duplicate files")) : (model.issues.isEmpty ? t("清理完成", "Cleanup complete") : t("本轮处理已结束", "Finished with skipped items")))
                 .font(.system(size: 24, weight: .medium))
-            Text(model.issues.isEmpty ? (model.isWholeDisk ? t("只查找常见个人文件，受保护的内容已排除。", "Only common personal files were checked. Protected content was excluded.") : t("已按确认的文件夹范围完成检查。", "The confirmed folders have been checked.")) : t("请查看未处理项目，确认后重新扫描。", "Review the unprocessed items, then scan again."))
-                .font(.system(size: 12)).foregroundStyle(colors.muted).multilineTextAlignment(.center).frame(maxWidth: 480)
+            Text(model.issues.isEmpty ? (model.groups.isEmpty ? (model.isWholeDisk ? t("只查找常见个人文件，受保护的内容已排除。", "Only common personal files were checked. Protected content was excluded.") : t("已按确认的文件夹范围完成检查。", "The confirmed folders have been checked.")) : t("取消“隐藏系统及受保护文件”即可查看这些结果。", "Turn off Hide system and protected files to review these results.")) : t("请查看未处理项目，确认后重新扫描。", "Review the unprocessed items, then scan again."))
+                .font(.system(size: 12)).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 480)
             Spacer()
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var groupList: some View {
         List(selection: $model.selectedGroupID) {
-            ForEach(model.groups) { group in
+            ForEach(model.visibleGroups) { group in
                 HStack(spacing: 12) {
                     FileThumbnail(file: group.files[0]).frame(width: 40, height: 40)
                         .clipShape(RoundedRectangle(cornerRadius: 6)).accessibilityHidden(true)
@@ -268,12 +255,12 @@ struct ContentView: View {
                         Text(group.files.first(where: { $0.id == group.keeperID })?.name ?? t("文件", "File"))
                             .font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                         Text(t("\(group.files.count) 份 · 多余 \(model.size(group.redundantBytes))", "\(englishCount(group.files.count, "copy", "copies")) · \(model.size(group.redundantBytes)) extra"))
-                            .font(.system(size: 11)).foregroundStyle(colors.muted)
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                 }.padding(.vertical, 11).tag(group.id)
             }
-        }.listStyle(.sidebar).compatibleScrollBackground().background(colors.canvas).disabled(model.isCleaning)
+        }.listStyle(.sidebar).compatibleScrollBackground().disabled(model.isCleaning)
     }
 
     private var detail: some View {
@@ -284,25 +271,25 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(file.name).font(.system(size: 15, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                         Text(t("正在预览 · \(model.size(file.size))", "Previewing · \(model.size(file.size))"))
-                            .font(.system(size: 11)).foregroundStyle(colors.muted)
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button { NSWorkspace.shared.activateFileViewerSelecting([file.url]) } label: {
                         Image(systemName: "folder").frame(width: 40, height: 40).contentShape(Rectangle())
-                    }.buttonStyle(.plain).foregroundStyle(colors.muted)
+                    }.buttonStyle(.plain).foregroundStyle(.secondary)
                         .help(t("在 Finder 中显示", "Show in Finder")).accessibilityLabel(t("在 Finder 中显示", "Show in Finder"))
                 }.padding(.horizontal, 24).padding(.top, 18).padding(.bottom, 14)
                 FilePreview(url: file.url).id(file.id)
                     .frame(maxWidth: .infinity, minHeight: 110, maxHeight: .infinity)
-                    .background(colors.canvas)
+                    .background(SystemPalette.window)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(colors.line, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(SystemPalette.separator, lineWidth: 1))
                     .padding(.horizontal, 24).padding(.bottom, 18)
                 HStack {
                     Text(t("保留哪一份", "Choose what stays")).font(.system(size: 12, weight: .semibold))
                     Spacer()
                     Text(t("内容完全相同 · 点击下方文件预览", "Identical contents · Click a file to preview"))
-                        .font(.system(size: 10)).foregroundStyle(colors.muted)
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
                 }.padding(.horizontal, 24).padding(.bottom, 10)
                 ScrollView {
                     LazyVStack(spacing: 7) {
@@ -311,9 +298,9 @@ struct ContentView: View {
                 }.frame(height: min(248, CGFloat(group.files.count) * 88 + 14, max(130, geometry.size.height - 240)))
             } else {
                 Text(t("选择一组文件进行预览", "Select a group to preview"))
-                    .foregroundStyle(colors.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-        }.background(colors.surface)
+        }.background(SystemPalette.window)
         }
     }
 
@@ -323,7 +310,7 @@ struct ContentView: View {
         let selected = group.selectedIDs.contains(file.id)
         return HStack(spacing: 6) {
             if keeper {
-                Image(systemName: "shield.lefthalf.filled").font(.system(size: 15)).foregroundStyle(colors.ink)
+                Image(systemName: "shield.lefthalf.filled").font(.system(size: 15)).foregroundStyle(.primary)
                     .frame(width: 40, height: 40).help(t("本组保留文件", "Kept in this group"))
             } else {
                 Toggle(t("清理 \(file.name)", "Clean \(file.name)"), isOn: Binding(get: { selected }, set: { _ in model.toggle(file) }))
@@ -332,35 +319,46 @@ struct ContentView: View {
             Button { model.previewID = file.id } label: {
                 HStack(spacing: 12) {
                     FileThumbnail(file: file).frame(width: 58, height: 58)
-                        .background(colors.canvas)
+                        .background(SystemPalette.window)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(colors.line, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(SystemPalette.separator, lineWidth: 1))
                         .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
                         Text(file.name).font(.system(size: 12, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                         Text(keeper ? t("保留", "Keep") : (selected ? t("待清理", "To Trash") : t("不清理", "Not selected")))
                             .font(.system(size: 9, weight: .semibold)).padding(.horizontal, 6).padding(.vertical, 3)
-                            .foregroundStyle(keeper ? colors.accentDeep : colors.muted)
-                            .background(Capsule().fill(keeper ? colors.warmHighlight : colors.ink.opacity(0.045)))
+                            .foregroundStyle(keeper ? Color.accentColor : .secondary)
+                            .background(Capsule().fill(keeper ? SystemPalette.selection : Color.secondary.opacity(0.08)))
                     }
                     Text(model.location(file.url.deletingLastPathComponent()) + "  ·  " + model.shortPath(file.url.deletingLastPathComponent()))
-                        .font(.system(size: 11)).foregroundStyle(colors.muted).lineLimit(1).truncationMode(.middle)
-                    Text(t("创建于 \(model.date(file.stamp.created))", "Created \(model.date(file.stamp.created))"))
-                        .font(.system(size: 10)).foregroundStyle(colors.muted)
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    Text(t("修改于 \(model.date(file.stamp.modified))", "Modified \(model.date(file.stamp.modified))"))
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain).help(file.url.path)
+                .accessibilityLabel(t("预览 \(file.name)", "Preview \(file.name)"))
+                .accessibilityHint(t("在上方显示此文件", "Shows this file above"))
             if !keeper {
                 Button(t("保留此份", "Keep this")) { model.keep(file) }
-                    .buttonStyle(UnicoButtonStyle(colors: colors)).disabled(model.isCleaning)
+                    .buttonStyle(.bordered).disabled(model.isCleaning)
             } else {
-                Text(file.id == group.files.first?.id ? t("推荐保留", "Suggested") : t("手动保留", "Your choice"))
-                    .font(.system(size: 10)).foregroundStyle(colors.muted).padding(.horizontal, 10)
+                Text(defaultKeepLabel(file, group: group))
+                    .font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 10)
             }
         }.padding(.horizontal, 10).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 12).fill(previewing ? colors.warmHighlight.opacity(0.42) : colors.canvas.opacity(0.55)))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(previewing ? colors.accent.opacity(0.55) : Color.clear, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 8).fill(previewing ? SystemPalette.selection.opacity(0.35) : Color.clear))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(previewing ? Color.accentColor.opacity(0.55) : Color.clear, lineWidth: 1))
+    }
+
+    private func defaultKeepLabel(_ file: FileRecord, group: DuplicateGroup) -> String {
+        guard file.id == group.keeperID else { return t("手动保留", "Your choice") }
+        switch group.defaultKeepRule {
+        case .newestModified: return t("默认保留最新修改日期", "Newest modified kept by default")
+        case .oldestModified: return t("默认保留最早修改日期", "Earliest modified kept by default")
+        case .manual: return group.selectedIDs.isEmpty ? t("未预选清理", "Nothing preselected") : t("手动保留", "Your choice")
+        }
     }
 
     private var footer: some View {
@@ -369,16 +367,16 @@ struct ContentView: View {
                 Text(model.isCleaning ? t("正在核验并清理 \(model.cleanProcessed) / \(model.cleanTotal)", "Checking and cleaning \(model.cleanProcessed) / \(model.cleanTotal)") : t("已选 \(model.selectedCount) 个副本 · \(model.size(model.selectedBytes))", "\(englishCount(model.selectedCount, "copy", "copies")) selected · \(model.size(model.selectedBytes))"))
                     .font(.system(size: 15, weight: .semibold)).monospacedDigit()
                 Text(t("确认副本所在位置不再需要。仅移到废纸篓，可恢复。", "Confirm these copies are no longer needed here. Recoverable from Trash."))
-                    .font(.system(size: 11)).foregroundStyle(colors.muted)
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if model.isCleaning {
                 ProgressView().controlSize(.small)
                 Button(model.cancelling ? t("正在停止…", "Stopping…") : t("停止清理", "Stop cleanup"), action: model.cancel)
-                    .buttonStyle(UnicoButtonStyle(colors: colors)).disabled(model.cancelling)
+                    .buttonStyle(.bordered).disabled(model.cancelling)
             } else {
                 Button { model.prompt = .clean } label: { Label(t("移到废纸篓", "Move to Trash"), systemImage: "trash") }
-                    .buttonStyle(UnicoButtonStyle(colors: colors, primary: true)).disabled(model.selectedCount == 0)
+                    .buttonStyle(.borderedProminent).disabled(model.selectedCount == 0)
             }
         }.padding(.horizontal, 24).padding(.vertical, 18)
     }
@@ -387,16 +385,16 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(t("未处理的项目", "Unprocessed items")).font(.system(size: 23, weight: .medium))
             Text(t("这些项目没有被成功扫描或清理，不计作已处理。", "These items could not be scanned or cleaned. They are not counted as processed."))
-                .font(.system(size: 12)).foregroundStyle(colors.muted)
+                .font(.system(size: 12)).foregroundStyle(.secondary)
             List(model.issues) { issue in
                 VStack(alignment: .leading, spacing: 5) {
                     Text(issue.path).font(.system(size: 12)).textSelection(.enabled)
-                    Text(t(issue.reason, issue.englishReason)).font(.system(size: 11)).foregroundStyle(colors.muted)
+                    Text(t(issue.reason, issue.englishReason)).font(.system(size: 11)).foregroundStyle(.secondary)
                 }.padding(.vertical, 6)
             }.compatibleScrollBackground()
             HStack { Spacer(); Button(t("完成", "Done")) { model.showIssues = false }
-                .buttonStyle(UnicoButtonStyle(colors: colors, primary: true)).keyboardShortcut(.defaultAction) }
-        }.padding(28).frame(width: 640, height: 430).background(colors.canvas)
+                .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction) }
+        }.padding(28).frame(width: 640, height: 430).background(SystemPalette.window)
     }
 }
 

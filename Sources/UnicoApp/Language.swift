@@ -1,15 +1,25 @@
 import Foundation
 
-enum AppLanguage: String, CaseIterable, Identifiable {
-    case chinese = "zh-Hans"
-    case english = "en"
-    var id: String { rawValue }
-    var name: String { self == .chinese ? "简体中文" : "English" }
+enum AppLanguage {
+    case chinese
+    case english
     var locale: Locale { Locale(identifier: self == .chinese ? "zh_CN" : "en_US") }
-    static func initial(defaults: UserDefaults = .standard) -> Self {
-        if let value = defaults.string(forKey: "Unico.language"), let saved = Self(rawValue: value) { return saved }
-        return .english
+    static func system(defaults: UserDefaults = .standard) -> Self {
+        let preferred = defaults.stringArray(forKey: "AppleLanguages") ?? Locale.preferredLanguages
+        guard let primaryLanguage = preferred.first else { return .english }
+        return usesSimplifiedChinese(primaryLanguage) ? .chinese : .english
     }
+
+    /// Unico ships Simplified Chinese and English. Every other primary language,
+    /// including Traditional Chinese, falls back to English until it is localized.
+    private static func usesSimplifiedChinese(_ identifier: String) -> Bool {
+        let normalized = identifier.lowercased().replacingOccurrences(of: "_", with: "-")
+        return normalized == "zh"
+            || normalized.hasPrefix("zh-hans")
+            || normalized.hasPrefix("zh-cn")
+            || normalized.hasPrefix("zh-sg")
+    }
+
     func text(_ chinese: String, _ english: String) -> String { self == .chinese ? chinese : english }
 }
 

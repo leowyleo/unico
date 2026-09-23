@@ -4,7 +4,7 @@ Verified locally on Apple Silicon / macOS 26.5.1. This is a community preview, n
 
 ## Automated checks
 
-24 XCTest cases passed on 2026-08-31. Coverage includes exact-content grouping, keep selection, cancellation, unreadable locations, links/hard links, default exclusions, explicit-folder confirmation, scope isolation, whole-disk ignoring manual confirmation, cleanup revalidation, Trash failure, and generated-file Trash/recovery.
+31 XCTest cases passed on 2026-09-10. Coverage includes exact-content grouping, keep selection, cancellation, unreadable locations, links/hard links, default exclusions, explicit-folder confirmation, scope isolation, whole-disk ignoring manual confirmation, cleanup revalidation, Trash failure, generated-file Trash/recovery, and the App Store build flag that removes whole-disk scanning.
 
 Reproduce with:
 

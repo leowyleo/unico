@@ -8,6 +8,7 @@ enum AppPrompt: String, Identifiable { case wholeDisk, manualScan, clean; var id
 
 @MainActor
 final class AppModel: ObservableObject {
+    let settings: ScanSettings
     @Published var phase: AppPhase = .start
     @Published var roots: [URL] = []
     @Published var progress = ScanProgress()
@@ -17,15 +18,15 @@ final class AppModel: ObservableObject {
     @Published var issues: [ScanIssue] = []
     @Published var showIssues = false
     @Published var prompt: AppPrompt?
-    @Published var language = AppLanguage.initial() {
-        didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: "Unico.language")
-            onLanguageChange?()
-        }
-    }
-    var onLanguageChange: (() -> Void)?
+    let language = AppLanguage.system()
     @Published var notice: AppMessage?
     @Published var isWholeDisk = false
+    @Published private(set) var hidesSystemFiles = true
+
+    init(settings: ScanSettings? = nil) {
+        self.settings = settings ?? ScanSettings()
+    }
+    var supportsWholeDiskScan: Bool { !DistributionConfiguration.isAppStoreBuild }
     var scopeTitle: String {
         isWholeDisk ? t("本机内置磁盘", "Internal disk") : (roots.count == 1 ? location(roots[0]) : t("\(roots.count) 个文件夹", "\(englishCount(roots.count, "folder"))"))
     }
@@ -57,10 +58,16 @@ final class AppModel: ObservableObject {
     @Published var isDropTarget = false
     private var token: CancellationToken?
     private var scopedURLs: [URL] = []
+    private var scannedRules = ScanRules()
     private(set) var confirmedScanRoots: [URL] = []
 
     var selectedCount: Int { groups.reduce(0) { $0 + $1.selectedIDs.count } }
     var selectedBytes: Int64 { groups.reduce(0) { $0 + $1.selectedBytes } }
+    var visibleGroups: [DuplicateGroup] {
+        hidesSystemFiles ? groups.filter { !containsSystemOrProtectedFiles($0) } : groups
+    }
+    var systemOrProtectedGroupCount: Int { groups.filter(containsSystemOrProtectedFiles).count }
+    var visibleSelectedCount: Int { visibleGroups.reduce(0) { $0 + $1.selectedIDs.count } }
     var currentGroup: DuplicateGroup? { groups.first { $0.id == selectedGroupID } }
     var previewFile: FileRecord? {
         guard let group = currentGroup else { return nil }
@@ -122,6 +129,7 @@ final class AppModel: ObservableObject {
 
     func start(wholeDisk: Bool = false, confirmed: Bool = false) {
         guard !busy else { return }
+        guard !wholeDisk || supportsWholeDiskScan else { return }
         if !wholeDisk && !confirmed {
             if !roots.isEmpty { prompt = .manualScan }
             return
@@ -134,17 +142,21 @@ final class AppModel: ObservableObject {
         phase = .scanning
         confirmedScanRoots = wholeDisk ? [] : scanRoots
         let confirmedRoots = confirmedScanRoots
+        let scanRules = settings.scanRules
+        let defaultKeepRule = settings.defaultKeepRule
         let cancellation = CancellationToken(); token = cancellation
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let result = try Scanner().scan(roots: scanRoots, wholeDisk: wholeDisk, confirmedRoots: confirmedRoots, token: cancellation) { status in
+                let result = try Scanner().scan(roots: scanRoots, wholeDisk: wholeDisk, confirmedRoots: confirmedRoots, scanRules: scanRules, defaultKeepRule: defaultKeepRule, token: cancellation) { status in
                     DispatchQueue.main.async { self?.progress = status }
                 }
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.groups = result.groups; self.scanned = result.scanned
+                    self.scannedRules = scanRules
                     self.issues = result.issues; self.excluded = result.excluded
-                    self.selectedGroupID = result.groups.first?.id
+                    self.deselectSystemOrProtectedGroups()
+                    self.selectedGroupID = self.visibleGroups.first?.id
                     self.phase = .results; self.cancelling = false; self.token = nil
                 }
             } catch {
@@ -173,9 +185,20 @@ final class AppModel: ObservableObject {
     }
     func toggleAll() {
         guard !isCleaning else { return }
-        let clear = selectedCount > 0
+        let visibleIDs = Set(visibleGroups.map(\.id))
+        let clear = visibleSelectedCount > 0
         for index in groups.indices {
+            guard visibleIDs.contains(groups[index].id) else { continue }
             groups[index].selectedIDs = clear ? [] : Set(groups[index].files.filter { $0.id != groups[index].keeperID }.map(\.id))
+        }
+    }
+    func setSystemFileVisibility(_ hide: Bool) {
+        hidesSystemFiles = hide
+        guard hide else { return }
+        deselectSystemOrProtectedGroups()
+        if selectedGroupID.flatMap({ id in visibleGroups.contains(where: { $0.id == id }) ? id : nil }) == nil {
+            selectedGroupID = visibleGroups.first?.id
+            previewID = nil
         }
     }
     func clean() {
@@ -183,9 +206,10 @@ final class AppModel: ObservableObject {
         isCleaning = true; cancelling = false; cleanProcessed = 0; cleanTotal = selectedCount
         let snapshot = groups
         let confirmedRoots = confirmedScanRoots
+        let scanRules = scannedRules
         let cancellation = CancellationToken(); token = cancellation
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Cleaner().clean(groups: snapshot, confirmedRoots: confirmedRoots, token: cancellation) { processed in
+            let result = Cleaner().clean(groups: snapshot, confirmedRoots: confirmedRoots, scanRules: scanRules, token: cancellation) { processed in
                 DispatchQueue.main.async { self?.cleanProcessed = processed }
             }
             DispatchQueue.main.async {
@@ -206,6 +230,15 @@ final class AppModel: ObservableObject {
                 self.notice = AppMessage(chinese, english)
                 self.isCleaning = false; self.cancelling = false; self.token = nil
             }
+        }
+    }
+
+    private func containsSystemOrProtectedFiles(_ group: DuplicateGroup) -> Bool {
+        group.files.contains { FileSafety.isSystemOrProtected($0.url) }
+    }
+    private func deselectSystemOrProtectedGroups() {
+        for index in groups.indices where containsSystemOrProtectedFiles(groups[index]) {
+            groups[index].selectedIDs = []
         }
     }
 }

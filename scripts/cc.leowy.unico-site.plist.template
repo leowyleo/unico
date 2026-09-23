@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>cc.leowy.unico-site</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/env</string><string>python3</string>
+    <string>__PROJECT_ROOT__/scripts/unico-site-server.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>__PROJECT_ROOT__</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>__PROJECT_ROOT__/logs/unico-site.log</string>
+  <key>StandardErrorPath</key><string>__PROJECT_ROOT__/logs/unico-site.error.log</string>
+</dict></plist>

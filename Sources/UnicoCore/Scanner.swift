@@ -2,7 +2,7 @@ import Foundation
 
 public struct Scanner {
     public init() {}
-    public func scan(roots: [URL], wholeDisk: Bool = false, confirmedRoots: [URL] = [], token: CancellationToken,
+    public func scan(roots: [URL], wholeDisk: Bool = false, confirmedRoots: [URL] = [], scanRules: ScanRules = ScanRules(), defaultKeepRule: DuplicateKeepRule = .newestModified, token: CancellationToken,
                      progress: (ScanProgress) -> Void = { _ in }) throws -> ScanResult {
         let fm = FileManager.default
         // Whole-disk scans never inherit manual-folder confirmation.
@@ -27,11 +27,11 @@ public struct Scanner {
         }
         for root in uniqueRoots {
             try token.check()
-            if !FileSafety.isConfirmed(root, roots: confirmedRoots) && FileSafety.excluded(root) { issues.append(.init(path: root.path, reason: "受保护或由应用管理的位置，已跳过", englishReason: "Protected or application-managed location. Skipped.")); continue }
+            if scanRules.ignores(root) || FileSafety.excluded(root, skipHiddenFiles: scanRules.skipHiddenFiles) { issues.append(.init(path: root.path, reason: "受保护或由应用管理的位置，已跳过", englishReason: "Protected or application-managed location. Skipped.")); continue }
             do {
                 guard try FileStamp.read(root).isDirectory else { throw ScanError.unsafe }
-                try FileSafety.verifyAncestors(root, confirmedRoots: confirmedRoots)
-                if try !FileSafety.isConfirmed(root, roots: confirmedRoots) && FileSafety.protectedDirectory(root) { throw ScanError.unsafe }
+                try FileSafety.verifyAncestors(root, confirmedRoots: confirmedRoots, skipHiddenFiles: scanRules.skipHiddenFiles)
+                if try !FileSafety.isConfirmed(root, roots: confirmedRoots) && FileSafety.protectedDirectory(root, skipHiddenFiles: scanRules.skipHiddenFiles) { throw ScanError.unsafe }
                 _ = try fm.contentsOfDirectory(atPath: root.path)
             } catch { issues.append(.init(path: root.path, error: error)); continue }
             guard let walker = fm.enumerator(at: root, includingPropertiesForKeys: keys, options: [], errorHandler: { url, error in
@@ -41,7 +41,7 @@ public struct Scanner {
             while let url = walker.nextObject() as? URL {
                 try token.check()
                 state.currentPath = url.path
-                if (!FileSafety.isConfirmed(url, roots: confirmedRoots) && FileSafety.excluded(url)) || (wholeDisk && url.path == "/Volumes") {
+                if scanRules.ignores(url) || FileSafety.excluded(url, skipHiddenFiles: scanRules.skipHiddenFiles) || (wholeDisk && url.path == "/Volumes") {
                     if (try? FileStamp.read(url).isDirectory) == true { walker.skipDescendants() }
                     excluded += 1; continue
                 }
@@ -51,7 +51,7 @@ public struct Scanner {
                     // on a link can suppress traversal of the next real directory on macOS.
                     if stamp.isSymlink { excluded += 1; continue }
                     let values = try url.resourceValues(forKeys: Set(keys))
-                    if try stamp.isDirectory && !FileSafety.isConfirmed(url, roots: confirmedRoots) && FileSafety.protectedDirectory(url) {
+                    if try stamp.isDirectory && !FileSafety.isConfirmed(url, roots: confirmedRoots) && FileSafety.protectedDirectory(url, skipHiddenFiles: scanRules.skipHiddenFiles) {
                         walker.skipDescendants()
                         excluded += 1; continue
                     }
@@ -60,7 +60,7 @@ public struct Scanner {
                         excluded += 1; continue
                     }
                     if stamp.isDirectory { report(); continue }
-                    guard try FileSafety.isPersonalFile(url, stamp: stamp, confirmedRoots: confirmedRoots) else { excluded += 1; continue }
+                    guard try FileSafety.isPersonalFile(url, stamp: stamp, confirmedRoots: confirmedRoots, scanRules: scanRules) else { excluded += 1; continue }
                     if values.isUbiquitousItem == true && values.ubiquitousItemDownloadingStatus != .current {
                         issues.append(.init(path: url.path, reason: "文件尚未下载到本机，已跳过", englishReason: "This cloud file is not downloaded. Skipped.")); continue
                     }
@@ -83,7 +83,7 @@ public struct Scanner {
             for file in bucket {
                 try token.check()
                 state.currentPath = file.url.path
-                do { hashes[try FileSafety.digest(file, token: token, confirmedRoots: confirmedRoots), default: []].append(file) }
+                do { hashes[try FileSafety.digest(file, token: token, confirmedRoots: confirmedRoots, scanRules: scanRules), default: []].append(file) }
                 catch ScanError.cancelled { throw ScanError.cancelled }
                 catch { issues.append(.init(path: file.url.path, error: error)) }
                 state.checked += 1; report()
@@ -95,21 +95,21 @@ public struct Scanner {
                     var placed = false
                     do {
                         for index in verified.indices {
-                            if try FileSafety.equal(verified[index][0], file, token: token, confirmedRoots: confirmedRoots) {
+                            if try FileSafety.equal(verified[index][0], file, token: token, confirmedRoots: confirmedRoots, scanRules: scanRules) {
                                 verified[index].append(file); placed = true; break
                             }
                         }
-                        if !placed { try FileSafety.validate(file, confirmedRoots: confirmedRoots); verified.append([file]) }
+                        if !placed { try FileSafety.validate(file, confirmedRoots: confirmedRoots, scanRules: scanRules); verified.append([file]) }
                     } catch ScanError.cancelled { throw ScanError.cancelled }
                     catch { issues.append(.init(path: file.url.path, error: error)) }
                 }
                 for files in verified where files.count > 1 {
                     // A file may change after its comparison while other members are checked.
                     let stable = files.filter { file in
-                        do { try FileSafety.validate(file, confirmedRoots: confirmedRoots); return true }
+                        do { try FileSafety.validate(file, confirmedRoots: confirmedRoots, scanRules: scanRules); return true }
                         catch { issues.append(.init(path: file.url.path, error: error)); return false }
                     }
-                    if stable.count > 1 { groups.append(DuplicateGroup(files: stable)) }
+                    if stable.count > 1 { groups.append(DuplicateGroup(files: stable, defaultKeepRule: defaultKeepRule)) }
                 }
                 state.duplicateGroups = groups.count; report()
             }

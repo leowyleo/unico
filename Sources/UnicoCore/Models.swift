@@ -11,13 +11,14 @@ public final class CancellationToken: @unchecked Sendable {
 }
 
 public enum ScanError: Error, LocalizedError {
-    case cancelled, changed, unsafe, unreadable(String)
+    case cancelled, changed, unsafe, unreadable(String), trashVerificationFailed
     public var errorDescription: String? {
         switch self {
         case .cancelled: return "操作已取消"
         case .changed: return "文件已变化或无法确认内容一致，请重新扫描"
         case .unsafe: return "受保护的内容、链接或非普通文件，已跳过"
         case .unreadable(let reason): return reason
+        case .trashVerificationFailed: return "无法确认文件已移到废纸篓，未报告为已删除"
         }
     }
 }
@@ -33,6 +34,9 @@ public struct FileStamp: Equatable, Sendable {
     public let changedSeconds: Int
     public let changedNanos: Int
     public let created: Date
+    public var modified: Date {
+        Date(timeIntervalSince1970: Double(modifiedSeconds) + Double(modifiedNanos) / 1e9)
+    }
     init(_ value: stat) {
         device = value.st_dev; inode = value.st_ino; size = value.st_size
         links = value.st_nlink; mode = value.st_mode
@@ -64,19 +68,39 @@ public struct FileRecord: Identifiable, Hashable, Sendable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+public enum DuplicateKeepRule: String, CaseIterable, Sendable, Identifiable, Hashable {
+    case newestModified
+    case oldestModified
+    case manual
+
+    public var id: String { rawValue }
+}
+
 public struct DuplicateGroup: Identifiable, Sendable {
     public let id: String
     public var files: [FileRecord]
     public var keeperID: String
     public var selectedIDs: Set<String>
-    public init(files: [FileRecord]) {
+    public let defaultKeepRule: DuplicateKeepRule
+    public init(files: [FileRecord], defaultKeepRule: DuplicateKeepRule = .newestModified) {
         self.files = files.sorted {
-            if $0.stamp.created != $1.stamp.created { return $0.stamp.created < $1.stamp.created }
+            // The newest version is the safest default to keep; users can still choose another copy.
+            if $0.stamp.modified != $1.stamp.modified { return $0.stamp.modified > $1.stamp.modified }
             return $0.id.localizedStandardCompare($1.id) == .orderedAscending
         }
         id = self.files[0].id
-        keeperID = self.files[0].id
-        selectedIDs = Set(self.files.dropFirst().map(\.id))
+        self.defaultKeepRule = defaultKeepRule
+        switch defaultKeepRule {
+        case .newestModified:
+            keeperID = self.files[0].id
+            selectedIDs = Set(self.files.dropFirst().map(\.id))
+        case .oldestModified:
+            keeperID = self.files.last!.id
+            selectedIDs = Set(self.files.dropLast().map(\.id))
+        case .manual:
+            keeperID = self.files[0].id
+            selectedIDs = []
+        }
     }
     public var selectedBytes: Int64 { files.filter { selectedIDs.contains($0.id) }.reduce(0) { $0 + $1.size } }
     public var redundantBytes: Int64 { Int64(max(0, files.count - 1)) * (files.first?.size ?? 0) }
@@ -135,6 +159,7 @@ public func englishErrorDescription(_ error: Error) -> String {
         case .changed: return "The file changed or could not be verified. Scan again."
         case .unsafe: return "Protected content, link, or unsupported file. Skipped."
         case .unreadable(let detail): return "Could not read this item. \(detail)"
+        case .trashVerificationFailed: return "The item could not be verified in Trash and was not reported as removed."
         }
     }
     let value = error as NSError

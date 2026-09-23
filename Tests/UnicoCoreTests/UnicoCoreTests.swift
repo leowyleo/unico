@@ -33,6 +33,52 @@ final class UnicoCoreTests: XCTestCase {
         XCTAssertEqual(result.groups.last?.redundantBytes, 0)
     }
 
+    func testOnlyIncludedFileTypesAppearInFutureScans() throws {
+        let imageA = try file("a.jpg")
+        let imageB = try file("b.jpg")
+        let textA = try file("a.txt")
+        let textB = try file("b.txt")
+        let result = try Scanner().scan(roots: [root], scanRules: ScanRules(includedFileTypes: [.documents]), token: CancellationToken())
+        XCTAssertEqual(FileTypeCategory.category(for: imageA), .media)
+        XCTAssertEqual(FileTypeCategory.category(for: textA), .documents)
+        XCTAssertEqual(result.scanned, 2)
+        XCTAssertEqual(result.groups.count, 1)
+        XCTAssertEqual(Set(result.groups[0].files.map(\.url)), Set([textA, textB]))
+        XCTAssertFalse(result.groups[0].files.contains { $0.url == imageA || $0.url == imageB })
+    }
+
+    func testOtherFilesAreOffByDefaultAndCanBeIncluded() throws {
+        try file("a.bin")
+        try file("b.bin")
+        XCTAssertTrue(try scan().groups.isEmpty)
+
+        let result = try Scanner().scan(roots: [root], scanRules: ScanRules(includedFileTypes: [.other]), token: CancellationToken())
+        XCTAssertEqual(result.groups.count, 1)
+        XCTAssertEqual(result.groups.first?.selectedIDs.count, 1)
+    }
+
+    func testScanRulesFilterHiddenSmallAndIgnoredFiles() throws {
+        let visibleA = try file("visible-a.txt")
+        let visibleB = try file("visible-b.txt")
+        try file(".hidden-a.txt")
+        try file(".hidden-b.txt")
+        try file("ignored/a.txt")
+        try file("ignored/b.txt")
+        let rules = ScanRules(
+            includedFileTypes: [.documents],
+            skipHiddenFiles: true,
+            minimumFileSize: 8,
+            ignoredPaths: [root.appendingPathComponent("ignored").path]
+        )
+        let result = try Scanner().scan(roots: [root], scanRules: rules, token: CancellationToken())
+        XCTAssertEqual(Set(result.groups.flatMap(\.files).map(\.url)), Set([visibleA, visibleB]))
+
+        let unrestricted = ScanRules(includedFileTypes: [.documents], skipHiddenFiles: false)
+        let hiddenResult = try Scanner().scan(roots: [root], scanRules: unrestricted, token: CancellationToken())
+        let hiddenFiles = Set(hiddenResult.groups.flatMap(\.files).map(\.url))
+        XCTAssertTrue(hiddenFiles.isSuperset(of: [root.appendingPathComponent(".hidden-a.txt"), root.appendingPathComponent(".hidden-b.txt")]))
+    }
+
     func testOverlappingRootsSymlinksHardlinksAndProtectedPackages() throws {
         try file("folder/original.txt"); try file("folder/copy.txt")
         let linked = try file("hard-source.txt", "link data")
@@ -51,16 +97,31 @@ final class UnicoCoreTests: XCTestCase {
         XCTAssertEqual(explicit.issues.count, 1)
     }
 
-    func testCreationRecommendationAndSwitchKeeper() throws {
+    func testLatestModificationIsRecommendedAndKeeperCanBeChanged() throws {
         let first = try file("a.txt")
         let second = try file("b.txt")
-        try FileManager.default.setAttributes([.creationDate: Date(timeIntervalSince1970: 1_000_000)], ofItemAtPath: second.path)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2_000_000_000)], ofItemAtPath: second.path)
         var group = try XCTUnwrap(scan().groups.first)
         XCTAssertEqual(group.keeperID, second.path)
         group.keep(try XCTUnwrap(group.files.first { $0.url == first }))
         XCTAssertEqual(group.keeperID, first.path)
         XCTAssertFalse(group.selectedIDs.contains(first.path))
         XCTAssertTrue(group.selectedIDs.contains(second.path))
+    }
+
+    func testOldestAndManualKeepRules() throws {
+        let oldest = try file("old.swift")
+        let newest = try file("new.swift")
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2_000_000_000)], ofItemAtPath: newest.path)
+
+        let scriptRules = ScanRules(includedFileTypes: [.scripts])
+        let oldestRule = try XCTUnwrap(Scanner().scan(roots: [root], scanRules: scriptRules, defaultKeepRule: .oldestModified, token: CancellationToken()).groups.first)
+        XCTAssertEqual(oldestRule.keeperID, oldest.path)
+        XCTAssertEqual(oldestRule.selectedIDs, [newest.path])
+
+        let manual = try XCTUnwrap(Scanner().scan(roots: [root], scanRules: scriptRules, defaultKeepRule: .manual, token: CancellationToken()).groups.first)
+        XCTAssertEqual(manual.keeperID, newest.path)
+        XCTAssertTrue(manual.selectedIDs.isEmpty)
     }
 
     func testExcludedLeafDoesNotSuppressFollowingDirectory() throws {
@@ -148,6 +209,23 @@ final class UnicoCoreTests: XCTestCase {
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: root.path).count, 2)
     }
 
+    func testCleanupDoesNotReportADeletedFileAsMovedToTrash() throws {
+        try file("a.txt"); try file("b.txt")
+        let group = try XCTUnwrap(scan().groups.first)
+        let candidate = try XCTUnwrap(group.selectedIDs.first)
+
+        // Reproduce the dangerous failure mode: the deletion callback removes the
+        // file but does not return a real Trash destination.
+        let result = Cleaner().clean(groups: [group], token: CancellationToken(), trash: { url in
+            try FileManager.default.removeItem(at: url)
+            return url
+        })
+
+        XCTAssertTrue(result.trashed.isEmpty)
+        XCTAssertEqual(result.issues.count, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: candidate))
+    }
+
     func testCleanupCancellationDoesNotTrash() throws {
         try file("a.txt"); try file("b.txt")
         let token = CancellationToken(); token.cancel()
@@ -232,7 +310,7 @@ final class UnicoCoreTests: XCTestCase {
         XCTAssertEqual(result.issues.count, 1)
         XCTAssertTrue(result.trashed.isEmpty)
     }
-    func testConfirmedScopeIncludesProtectedTypesButNotSiblingOrLinks() throws {
+    func testConfirmedScopeNeverBypassesProtectedTypes() throws {
         let project = root.appendingPathComponent("Project")
         try file("Project/Package.swift", "manifest")
         let a = try file("Project/.runtime/a.bin", "binary data")
@@ -244,31 +322,20 @@ final class UnicoCoreTests: XCTestCase {
         let hard = try file("Project/hard", "hardlink data")
         XCTAssertEqual(link(hard.path, project.appendingPathComponent("hard-copy").path), 0)
         let result = try Scanner().scan(roots: [root], confirmedRoots: [project], token: CancellationToken())
-        XCTAssertEqual(result.groups.count, 1)
-        XCTAssertEqual(Set(result.groups[0].files.map(\.url)), Set([a, b]))
+        XCTAssertTrue(result.groups.isEmpty)
         let direct = try Scanner().scan(roots: [a.deletingLastPathComponent()], confirmedRoots: [a.deletingLastPathComponent()], token: CancellationToken())
-        XCTAssertEqual(direct.scanned, 1, "Selecting a project child overrides protected ancestors")
+        XCTAssertEqual(direct.scanned, 0, "Selecting a project child must not override protected ancestors")
         let automatic = try Scanner().scan(roots: [root], wholeDisk: true, confirmedRoots: [project], token: CancellationToken())
         XCTAssertTrue(automatic.groups.isEmpty, "Whole-disk mode must ignore manual grants")
-        var calls = 0
-        let denied = Cleaner().clean(groups: result.groups, token: CancellationToken(), trash: { url in calls += 1; return url })
-        XCTAssertEqual(calls, 0)
-        XCTAssertFalse(denied.issues.isEmpty, "The group alone is not permission to clean")
-        let allowed = Cleaner().clean(groups: result.groups, confirmedRoots: [project], token: CancellationToken(), trash: { url in calls += 1; return url })
-        XCTAssertEqual(calls, 1)
-        XCTAssertTrue(allowed.issues.isEmpty)
-        try Data("changed".utf8).write(to: URL(fileURLWithPath: result.groups[0].keeperID))
-        let changed = Cleaner().clean(groups: result.groups, confirmedRoots: [project], token: CancellationToken(), trash: { url in calls += 1; return url })
-        XCTAssertEqual(calls, 1, "Confirmation never bypasses content revalidation")
-        XCTAssertFalse(changed.issues.isEmpty)
     }
 
     func testConfirmedProtectedCleanupUsesTrashAndCanBeRestored() throws {
         try file(".config/a.json"); try file(".config/b.json")
         let confirmed = root.appendingPathComponent(".config")
-        let groups = try Scanner().scan(roots: [confirmed], confirmedRoots: [confirmed], token: CancellationToken()).groups
+        let rules = ScanRules(includedFileTypes: [.scripts], skipHiddenFiles: false)
+        let groups = try Scanner().scan(roots: [confirmed], confirmedRoots: [confirmed], scanRules: rules, token: CancellationToken()).groups
         let group = try XCTUnwrap(groups.first)
-        let result = Cleaner().clean(groups: groups, confirmedRoots: [confirmed], token: CancellationToken())
+        let result = Cleaner().clean(groups: groups, confirmedRoots: [confirmed], scanRules: rules, token: CancellationToken())
         XCTAssertTrue(result.issues.isEmpty)
         XCTAssertEqual(result.trashed.count, 1)
         XCTAssertTrue(FileManager.default.fileExists(atPath: group.keeperID))
